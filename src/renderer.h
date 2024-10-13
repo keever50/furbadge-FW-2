@@ -6,6 +6,6 @@
 
 void rend_init();
 void rend_test();
-void rend_printf(const char* format, ...);
+void rend_printf(const char *format, ...);
 void rend_clear(bool update);
-size_t rend_menu(const char** list, size_t size);
+size_t rend_menu(String *list, size_t size);
