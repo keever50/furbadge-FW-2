@@ -1,4 +1,6 @@
 #pragma once
+#include <hardware/spi.h>
+
 
 /* DISPLAY */
 
@@ -19,3 +21,11 @@
 #define JOY_BL 14
 #define JOY_BR 15
 #define JOY_BP 20
+
+/* SD */
+#define SD_MISO 0
+#define SD_CS 1
+#define SD_SCK 2
+#define SD_MOSI 3
+#define SD_SPEED 64'000'000
+#define SD_SPI spi0

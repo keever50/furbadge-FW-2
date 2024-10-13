@@ -2,13 +2,17 @@
 #include <renderer.h>
 #include <input.h>
 #include <vector>
+#include <fs_init.h>
+#include <badgeio.h>
+
 #include <apps/app.h>
 #include <apps/testapp.h>
+#include <apps/imageviewer.h>
 
 #define APP_COUNT sizeof(app_list)/sizeof(application)
 application app_list[]=
 {
-  {.name="testapp", .open=testapp_open},
+  {.name="imageviewer", .open=app_imageviewer},
   {.name="ABC", .open=testapp_open},
   {.name="TESTER", .open=testapp_open},
   {.name="APP", .open=testapp_open},
@@ -18,12 +22,18 @@ application app_list[]=
   {.name="AdgfP", .open=testapp_open}  
 };
 
+void do_halting_error(const char* msg)
+{
+  b_printf("SD/FS Error");
+  while(true);
+}
 
 void setup() {
   Serial.begin(115200);
   input_init();
   rend_init();
-  rend_test();
+  if(!fs_init()) do_halting_error("SD/FS Error");
+
 }
 
 void loop() {

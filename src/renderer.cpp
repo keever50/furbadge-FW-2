@@ -18,6 +18,11 @@ void rend_init()
   display.display();
   delay(1000);
   display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextWrap(false);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+
 }
 
 void rend_test()
@@ -27,7 +32,7 @@ void rend_test()
   display.setTextColor(WHITE);
   display.setCursor(0,0);
 
-  display.print("!!!TEST!!!");
+  display.drawCircle(20,20,20,WHITE);
   display.display();
 
 }
