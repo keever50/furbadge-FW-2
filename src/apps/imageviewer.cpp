@@ -3,6 +3,8 @@
 #include <ff.h>
 #include <renderer.h>
 #include <badgeio.h>
+#include <hardware.h>
+#include <input.h>
 
 #define APP_IV_MAX_DIR_ENTRIES 128
 
@@ -92,8 +94,47 @@ bool _app_IV_find_file(String &file_found)
   }
 }
 
-void _app_IV_view(String path)
+bool _app_IV_view(String path)
 {
+  Bmp_loader bmp;
+  b_printf("Loading bmp\n");
+  bmp_err_e err = bmp.load(path.c_str());
+  if (err != BMP_ANIM_OK)
+  {
+    rend_clear(false);
+    b_printf(bmp.get_err_str().c_str());
+    b_printf("\n");
+    delay(2000);
+    bmp.close();
+    return false;
+  }
+
+  rend_clear(true);
+  for (uint8_t y = 0; y < DISP_RES_H; y++)
+  {
+    bmp_pixel_s pixelline[DISP_RES_W];
+    bmp.get_pixel_line(0, y, DISP_RES_W, pixelline);
+
+    for (uint8_t x = 0; x < DISP_RES_W; x++)
+    {
+      uint8_t bit = pixelline[x].B > 100;
+      rend_draw_monopixel(x, y, bit);
+    }
+    rend_display();
+  }
+
+  bmp.close();
+  input_directions inputs;
+  for (;;)
+  {
+    input_get(&inputs);
+    if (inputs.pressed)
+      break;
+  }
+
+  rend_clear(true);
+  rend_printf("Exit BMP\n");
+  return true;
 }
 
 void _app_IV_find_and_view()
@@ -111,6 +152,7 @@ void _app_IV_find_and_view()
     return;
   }
   _app_IV_view(file_found);
+  rend_printf("Exit file find\n");
 }
 
 void app_imageviewer()
@@ -129,4 +171,5 @@ void app_imageviewer()
   case 1:
     break;
   }
+  rend_printf("Exit viewer\n");
 }

@@ -105,3 +105,22 @@ size_t rend_menu(String *list, size_t size)
   rend_clear(true);
   return cursor;
 }
+
+void rend_draw_pixel_line(uint8_t y, uint8_t *pixels, uint8_t width)
+{
+  for (uint8_t x = 0; x < width; x++)
+  {
+    display.drawPixel(x, y, pixels[x]);
+  }
+  display.display();
+}
+
+void rend_draw_monopixel(uint8_t x, uint8_t y, uint8_t bit)
+{
+  display.drawPixel(x, y, bit);
+}
+
+void rend_display()
+{
+  display.display();
+}
