@@ -7,7 +7,7 @@
 #include <input.h>
 
 #define APP_IV_MAX_DIR_ENTRIES 128
-
+#define APP_IV_WAIT_CONFIRM_S 3
 bool _app_IV_dirmenu(String path, String &selected_path, bool &is_file)
 {
   String list[APP_IV_MAX_DIR_ENTRIES];
@@ -69,6 +69,55 @@ bool _app_IV_dirmenu(String path, String &selected_path, bool &is_file)
   return true;
 }
 
+bool _app_IV_find_dir(String &dir_found)
+{
+  String selected_path = "";
+  String start_path = "";
+  for (;;)
+  {
+    bool is_file;
+    bool opened = _app_IV_dirmenu(start_path, selected_path, is_file);
+    b_printf(selected_path.c_str());
+    b_printf("\n");
+    if (!opened)
+      return false;
+    start_path = start_path + "/" + selected_path;
+    b_printf(start_path.c_str());
+    b_printf("\n");
+
+    /* is dir */
+    if (!is_file)
+    {
+      /* Wait X to confirm */
+      rend_clear(false);
+      rend_printf("Wait %ds to confirm\nPress to enter directory\n", APP_IV_WAIT_CONFIRM_S);
+      rend_printf(start_path.c_str());
+
+      /* Wait loop */
+      bool confirmed = true;
+      unsigned long start = millis();
+      while (millis() - start < APP_IV_WAIT_CONFIRM_S * 1000)
+      {
+        /* On button press, cancel wait and dont confirm */
+        input_directions inputs;
+        bool changed = input_get(&inputs);
+        if (changed && inputs.pressed)
+        {
+          confirmed = false;
+          break;
+        }
+      }
+
+      /*When confirmed, leave with result*/
+      if (confirmed)
+      {
+        dir_found = start_path;
+        return true;
+      }
+    }
+  }
+}
+
 /* Returns true when file found */
 bool _app_IV_find_file(String &file_found)
 {
@@ -92,12 +141,20 @@ bool _app_IV_find_file(String &file_found)
       return true;
     }
   }
+
+  return false;
 }
 
-bool _app_IV_view(String path)
+bool _app_IV_view(String path, bool dontwait)
 {
+
   Bmp_loader bmp;
+#if BADGE_DEBUG == 1
   b_printf("Loading bmp\n");
+  b_printf(path.c_str());
+  b_printf("\n");
+#endif
+
   bmp_err_e err = bmp.load(path.c_str());
   if (err != BMP_ANIM_OK)
   {
@@ -109,7 +166,7 @@ bool _app_IV_view(String path)
     return false;
   }
 
-  rend_clear(true);
+  rend_clear(false);
   for (uint8_t y = 0; y < DISP_RES_H; y++)
   {
     bmp_pixel_s pixelline[DISP_RES_W];
@@ -120,20 +177,22 @@ bool _app_IV_view(String path)
       uint8_t bit = pixelline[x].B > 100;
       rend_draw_monopixel(x, y, bit);
     }
-    rend_display();
   }
+
+  rend_display();
 
   bmp.close();
   input_directions inputs;
-  for (;;)
+  if (!dontwait)
   {
-    input_get(&inputs);
-    if (inputs.pressed)
-      break;
+    for (;;)
+    {
+      input_get(&inputs);
+      if (inputs.pressed)
+        break;
+    }
   }
 
-  rend_clear(true);
-  rend_printf("Exit BMP\n");
   return true;
 }
 
@@ -141,7 +200,6 @@ void _app_IV_find_and_view()
 {
   rend_printf("Select file");
   delay(1000);
-  rend_clear(false);
 
   String file_found;
   bool found = _app_IV_find_file(file_found);
@@ -151,8 +209,70 @@ void _app_IV_find_and_view()
     rend_printf("FS error");
     return;
   }
-  _app_IV_view(file_found);
+  rend_clear(false);
+  _app_IV_view(file_found, false);
   rend_printf("Exit file find\n");
+}
+
+void _app_IV_find_and_rotate_view()
+{
+  String dir_found;
+  bool found = _app_IV_find_dir(dir_found);
+
+  for (;;)
+  {
+    /* Open dir */
+    DIR dir;
+    FRESULT res = f_opendir(&dir, dir_found.c_str());
+    if (res != FR_OK)
+      return;
+
+    /* Start rotation */
+    for (;;)
+    {
+      FILINFO fno;
+      res = f_readdir(&dir, &fno);
+      /* On end of line, restart */
+      if (res != FR_OK || fno.fname[0] == 0)
+      {
+        f_closedir(&dir);
+        break;
+      }
+
+      /* Ignore dirs */
+      if (fno.fattrib & AM_DIR)
+      {
+        continue;
+      }
+
+      /* View file if .bmp, otherwise ignore */
+      char fname[128];
+      strcpy(fname, fno.fname);
+      char *name = strtok(fname, ".");
+      char *extension = strtok(NULL, ".");
+#if BADGE_DEBUG == 1
+      b_printf(extension);
+      b_printf("\n");
+#endif
+      if (strcmp(extension, "bmp") != 0)
+        continue;
+
+      /* Load and render */
+      String path = dir_found + "/" + String(fno.fname);
+      bool opened = _app_IV_view(path, true);
+
+      delay(APP_IV_SLIDE_DELAY_MS);
+
+      /* Exit? */
+      input_directions inputs = {0};
+      input_get(&inputs);
+      if (inputs.pressed)
+      {
+        f_closedir(&dir);
+        return;
+      }
+    }
+  }
 }
 
 void app_imageviewer()
@@ -169,6 +289,7 @@ void app_imageviewer()
     _app_IV_find_and_view();
     break;
   case 1:
+    _app_IV_find_and_rotate_view();
     break;
   }
   rend_printf("Exit viewer\n");
