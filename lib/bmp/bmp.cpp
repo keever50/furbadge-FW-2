@@ -19,6 +19,7 @@ bmp_err_e Bmp_loader::load(std::string path)
         err = FRESULT_str(fr);
         return BMP_ANIM_FILE_NOT_OPENED;
     }
+    opened = true;
 
     uint br;
     // Get header info
@@ -93,7 +94,6 @@ bmp_err_e Bmp_loader::load(std::string path)
         allocated = true;
     }
 
-    opened = true;
     return BMP_ANIM_OK;
 }
 
